@@ -49,7 +49,7 @@ type Config struct {
 	HetznerCloudFloatingIPID int    `mapstructure:"hetzner-cloud-floating-ip-id"`
 	HetznerCloudServerID     int    `mapstructure:"hetzner-cloud-server-id"`
 
-	// the following fields are not set by Marshalling the viper config into the struct.
+	// the following fields are not set by marshalling the viper config into the struct.
 	// Instead, these fields are set aftwerwards by casting some of the string values into specific types.
 	// For this reason, all fields begin with "p" for "parsed".
 	ParsedCIDR  string
@@ -91,7 +91,7 @@ func defineFlags() {
 	pflag.String("hetzner-robot-password", "", "Password for Hetzner Robot API.")
 
 	pflag.String("hetzner-cloud-token", "", "Token for Hetzner Cloud API.")
-	pflag.Int("hetzner-cloud--floating-ip-id", 0, "The floating IP ID for Hetzner Cloud API.")
+	pflag.Int("hetzner-cloud-floating-ip-id", 0, "The floating IP ID for Hetzner Cloud API.")
 	pflag.Int("hetzner-cloud-server-id", 0, "This servers' ID for Hetzner Cloud API.")
 
 	pflag.CommandLine.SortFlags = false
