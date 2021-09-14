@@ -25,6 +25,8 @@ contents:
   - src: vipconfig/vip-manager.yml
     dst: /etc/default/vip-manager.yml
     type: config
+    file_info:
+      mode: 0600
 
   - src: package/scripts/vip-manager.service
     dst: /lib/systemd/system/vip-manager.service

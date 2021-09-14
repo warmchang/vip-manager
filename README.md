@@ -70,6 +70,14 @@ The configuration can be passed to the executable through argument flags, enviro
 > The location of the YAML config file can be specified with the --config flag.
 > An exemplary config file is installed into `/etc/default/vip-manager_default.yml` or is available in the vipconfig directory in the repository of the software.
 
+If and when the configuration file holds sensitive keys (such as `etcd-password`, `consul-token` or any Hetzner credentials), the file __should__ be
+protected by making it readable by root only (or a unique user only for running vip-manager).
+ ```bash
+chown root:root /etc/default/vip-manager.yml
+chmod 0600 /etc/default/vip-manager.yml
+```
+> This is done by default when installing from the .deb or .rpm package.
+
 Configuration is now (from release v1.0 on) handled using the [`viper`](https://github.com/spf13/viper) library.
 This means that environment variables, command line flags, and config files can be used to configure vip-manager.
 When using different configuration sources simultaneously, this is the precedence order:
