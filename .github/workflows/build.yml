@@ -27,37 +27,14 @@ jobs:
       run: |
         rm -r iphlpapi
 
-    - name: GolangCI-Lint
-      uses: golangci/golangci-lint-action@v2
+    - name: Run Revive Action by pulling pre-built image
+      uses: docker://morphy/revive-action:v2
       with:
-        # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-        version: latest
-
-        # Optional: golangci-lint command line arguments.
-        args: --verbose
+        config: revive.toml
+        exclude: "iphlpapi;package;test"
 
     - name: Get dependencies
       run: |
         go mod download
         go version
         go build
-
-    # - name: Test
-    #   run: go test -v -p 1 -coverprofile=profile.cov ./...
-
-    # - name: Convert coverage to lcov
-    #   uses: jandelgado/gcov2lcov-action@v1.0.2
-    #   with:
-    #       infile: profile.cov
-    #       outfile: coverage.lcov
-
-    # - name: Coveralls
-    #   uses: coverallsapp/github-action@master
-    #   with:
-    #     github-token: ${{ secrets.GITHUB_TOKEN }}
-    #     path-to-lcov: coverage.lcov
-
-    # - name: Run GoReleaser
-    #   uses: goreleaser/goreleaser-action@master
-    #   with:
-    #     args: release --snapshot --skip-publish --rm-dist

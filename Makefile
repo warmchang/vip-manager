@@ -30,6 +30,9 @@ package-rpm: vip-manager package/changelog.yml
 package/changelog.yml:
 	chglog init --config-file package/chglog.yml --deb-distribution unstable --deb-urgency low --output $@
 
+lint:
+	revive -config revive.toml -exclude iphlpapi -exclude package -exclude test ./...
+
 clean:
 	rm -f vip-manager
 	rm -f vip-manager*.deb
