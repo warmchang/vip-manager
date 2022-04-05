@@ -28,7 +28,7 @@ jobs:
         rm -r iphlpapi
 
     - name: Run Revive Action by pulling pre-built image
-      uses: docker://morphy/revive-action:v2
+      uses: morphy2k/revive-action@v2
       with:
         config: revive.toml
         exclude: "iphlpapi;package;test"
