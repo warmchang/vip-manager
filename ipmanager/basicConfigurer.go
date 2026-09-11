@@ -13,7 +13,7 @@ import (
 // that handle their own network connection, in setups where it is
 // sufficient to add the virtual ip using `ip addr add ...` .
 // After adding the virtual ip to the specified interface,
-// a gratuitous ARP package is sent out to update the tables of
+// a gratuitous ARP package or IPv6 Neighbor Advertisement is sent out to update the tables of
 // nearby routers and other devices.
 type BasicConfigurer struct {
 	*IPConfiguration
@@ -25,7 +25,7 @@ func newBasicConfigurer(config *IPConfiguration) (*BasicConfigurer, error) {
 	if c.Iface.HardwareAddr == nil || c.Iface.HardwareAddr.String() == "00:00:00:00:00:00" {
 		return nil, errors.New(`cannot run vip-manager on the loopback device
 as its hardware address is the local address (00:00:00:00:00:00),
-which prohibits sending of gratuitous ARP messages`)
+which prohibits sending of gratuitous ARP messages and IPv6 Neighbor Advertisements`)
 	}
 	return c, nil
 }
@@ -53,8 +53,59 @@ const (
 	IPv4AddressSize = 4
 )
 
+// serializePacketLayers is gopacket.SerializeLayers, kept in a variable so
+// tests can force a serialization failure.
+var serializePacketLayers = gopacket.SerializeLayers
+
+// createGratuitousNA prepares an unsolicited IPv6 Neighbor Advertisement.
+func (c *BasicConfigurer) createGratuitousNA(sourceIP net.IP) ([]byte, error) {
+	allNodes := net.ParseIP("ff02::1")
+	ethLayer := &layers.Ethernet{
+		SrcMAC:       c.Iface.HardwareAddr,
+		DstMAC:       net.HardwareAddr{0x33, 0x33, 0x00, 0x00, 0x00, 0x01},
+		EthernetType: layers.EthernetTypeIPv6,
+	}
+	ipv6Layer := &layers.IPv6{
+		Version:    6,
+		NextHeader: layers.IPProtocolICMPv6,
+		HopLimit:   255,
+		SrcIP:      sourceIP,
+		DstIP:      allNodes,
+	}
+	naLayer := &layers.ICMPv6NeighborAdvertisement{
+		Flags:         0x20, // Override existing neighbor cache entries.
+		TargetAddress: c.VIP.AsSlice(),
+		Options: layers.ICMPv6Options{
+			{
+				Type: layers.ICMPv6OptTargetAddress,
+				Data: c.Iface.HardwareAddr,
+			},
+		},
+	}
+	icmpLayer := &layers.ICMPv6{
+		TypeCode: layers.CreateICMPv6TypeCode(layers.ICMPv6TypeNeighborAdvertisement, 0),
+	}
+	if err := icmpLayer.SetNetworkLayerForChecksum(ipv6Layer); err != nil {
+		return nil, err
+	}
+
+	buffer := gopacket.NewSerializeBuffer()
+	opts := gopacket.SerializeOptions{
+		FixLengths:       true,
+		ComputeChecksums: true,
+	}
+	if err := serializePacketLayers(buffer, opts, ethLayer, ipv6Layer, icmpLayer, naLayer); err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
 // createGratuitousARP prepares a packet with a gratuitous ARP request
 func (c *BasicConfigurer) createGratuitousARP() ([]byte, error) {
+	// Unmap so that a ::ffff:a.b.c.d VIP yields the 4 bytes ProtAddressSize promises.
+	vip := c.VIP.Unmap().AsSlice()
+
 	// Create the Ethernet layer
 	ethLayer := &layers.Ethernet{
 		SrcMAC:       c.Iface.HardwareAddr,
@@ -70,9 +121,9 @@ func (c *BasicConfigurer) createGratuitousARP() ([]byte, error) {
 		ProtAddressSize:   IPv4AddressSize,
 		Operation:         layers.ARPReply, // Gratuitous ARP is sent as a reply
 		SourceHwAddress:   c.Iface.HardwareAddr,
-		SourceProtAddress: c.VIP.AsSlice(),
+		SourceProtAddress: vip,
 		DstHwAddress:      c.Iface.HardwareAddr, // Gratuitous ARP targets itself
-		DstProtAddress:    c.VIP.AsSlice(),
+		DstProtAddress:    vip,
 	}
 
 	// Create a packet with the layers
@@ -82,7 +133,7 @@ func (c *BasicConfigurer) createGratuitousARP() ([]byte, error) {
 		ComputeChecksums: true,
 	}
 
-	if err := gopacket.SerializeLayers(buffer, opts, ethLayer, arpLayer); err != nil {
+	if err := serializePacketLayers(buffer, opts, ethLayer, arpLayer); err != nil {
 		return nil, err
 	}
 

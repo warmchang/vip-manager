@@ -31,11 +31,11 @@ type IPManager struct {
 }
 
 func getMask(vip netip.Addr, mask int) net.IPMask {
-	if vip.Is4() { //IPv4
+	if vip.Is4() || vip.Is4In6() { //IPv4
 		if mask > 0 && mask < 33 {
 			return net.CIDRMask(mask, 32)
 		}
-		var ip net.IP = vip.AsSlice()
+		var ip net.IP = vip.Unmap().AsSlice()
 		return ip.DefaultMask()
 	}
 	return net.CIDRMask(mask, 128) //IPv6
@@ -58,6 +58,9 @@ func NewIPManager(conf *vipconfig.Config, states <-chan bool) (m *IPManager, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse VIP address: %w", err)
 	}
+	// Normalise ::ffff:a.b.c.d to a.b.c.d so that the rest of the code can rely
+	// on Is4/Is6 to pick the ARP or the Neighbor Advertisement path.
+	vip = vip.Unmap()
 	vipMask := getMask(vip, conf.Mask)
 	netIface, err := getNetIface(conf.Iface)
 	if err != nil {

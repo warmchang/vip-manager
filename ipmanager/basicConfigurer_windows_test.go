@@ -8,16 +8,8 @@ import (
 	"net/netip"
 	"testing"
 
-	"go.uber.org/zap"
 	"golang.org/x/sys/windows"
 )
-
-// mockLogger silences the package logger for the duration of a test.
-func mockLogger(t *testing.T) {
-	old := log
-	log = zap.NewNop().Sugar()
-	t.Cleanup(func() { log = old })
-}
 
 // ---------------------------------------------------------------------------
 // test helpers

@@ -111,6 +111,10 @@ func TestGetMask_IPv4_ValidRange(t *testing.T) {
 		{"IPv4 /16", netip.MustParseAddr("10.0.0.1"), 16, "ffff0000"},
 		{"IPv6 /64", netip.MustParseAddr("2001:db8::1"), 64, "ffffffffffffffff0000000000000000"},
 		{"IPv6 /128", netip.MustParseAddr("2001:db8::1"), 128, "ffffffffffffffffffffffffffffffff"},
+		// Is6 reports true for ::ffff:a.b.c.d, but it is an IPv4 address and
+		// must get a 32 bit mask, not a 128 bit one.
+		{"IPv4-in-IPv6 /24", netip.MustParseAddr("::ffff:192.0.2.1"), 24, "ffffff00"},
+		{"IPv4-in-IPv6 /32", netip.MustParseAddr("::ffff:192.0.2.1"), 32, "ffffffff"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -133,6 +137,7 @@ func TestGetMask_IPv4_OutOfRange(t *testing.T) {
 		{"IPv4 negative", netip.MustParseAddr("192.168.1.1"), -1, "negative mask"},
 		{"IPv4 > 32", netip.MustParseAddr("192.168.1.1"), 33, "mask > 32"},
 		{"IPv4 zero", netip.MustParseAddr("192.168.1.1"), 0, "zero mask"},
+		{"IPv4-in-IPv6 zero", netip.MustParseAddr("::ffff:192.0.2.1"), 0, "zero mask falls back to the default mask"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
